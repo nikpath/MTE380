@@ -1,63 +1,71 @@
-//TESTING: locate self using tof
 /*!
- * @file DFRobot_VL53L0X.ino
- * @brief DFRobot's Laser rangefinder library
- * @n The example shows the usage of VL53L0X in a simple way.
-
- * @copyright   [DFRobot](https://www.dfrobot.com), 2016
- * @copyright   GNU Lesser General Public License
-
- * @author [LiXin]
- * @version  V1.0
- * @date  2017-8-21
- * @https://github.com/DFRobot/DFRobot_VL53L0X
- timer*/
+ * This is the locating test code
+ * 
+ */
 #include "Arduino.h"
 #include "Wire.h"
 #include "DFRobot_VL53L0X.h"
+#include <L298NX2.h>
 
-/*****************Keywords instruction*****************/
-//Continuous--->Continuous measurement model
-//Single------->Single measurement mode
-//High--------->Accuracy of 0.25 mm
-//Low---------->Accuracy of 1 mm
-/*****************Function instruction*****************/
-//setMode(ModeState mode, PrecisionState precision)
-  //*This function is used to set the VL53L0X mode
-  //*mode: Set measurement mode       Continuous or Single
-  //*precision: Set the precision     High or Low
-//void start()
-  //*This function is used to enabled VL53L0X
-//float getDistance()
-  //*This function is used to get the distance
-//uint16_t getAmbientCount()
-  //*This function is used to get the ambient count
-//uint16_t getSignalCount()
-  //*This function is used to get the signal count
-//uint8_t getStatus();
-  //*This function is used to get the status
-//void stop()
-  //*This function is used to stop measuring
+DFRobot_VL53L0X s_front;
 
-DFRobotVL53L0X sensor;
+//pin declaration
+//motor pins
+
+//button pin
+/*
+// Pin definition - motor 1 (right)
+const unsigned int IN1 = 2;
+const unsigned int IN2 = 3;
+const unsigned int EN_A = 9;
+
+//pin definition - motor 2 (left)
+const unsigned int IN1_B = 4;
+const unsigned int IN2_B = 5;
+const unsigned int EN_B = 10;
+*/
+
+int cur_dist = 0;
 
 void setup() {
+  //Motor setup
+  //L298NX2 motors(EN_A, IN1_A, IN2_A, EN_B, IN1_B, IN2_B );
+  
+  // Wait for Serial Monitor to be opened
+  while (!Serial)
+  {
+    //do nothing
+  }
+
+  // Set initial speed
+  //motors.setSpeed(70);
+  
+  //TOF setup
   //initialize serial communication at 115200 bits per second:
   Serial.begin(115200);
   //join i2c bus (address optional for master)
   Wire.begin();
   //Set I2C sub-device address
-  sensor.begin(0x50);
+  s_front.begin(0x50);
   //Set to Back-to-back mode and high precision mode
-  sensor.setMode(Continuous,High);
+  s_front.setMode(s_front.eContinuous,s_front.eHigh);
   //Laser rangefinder begins to work
-  sensor.start();
+  s_front.start();
 }
 
-void loop()
+void loop() 
 {
   //Get the distance
-  Serial.print("Distance: ");Serial.println(sensor.getDistance());
+  cur_dist = s_front.getDistance();
+  if(cur_dist < 70){
+    Serial.print("stop motors");
+    //motors.stop();
+  } else {
+    Serial.print("running motors");
+    //motors.forward();
+    delay(3000);
+  }
+  Serial.print("Distance: ");Serial.println(s_front.getDistance());
   //The delay is added to demonstrate the effect, and if you do not add the delay,
   //it will not affect the measurement accuracy
   delay(500);
