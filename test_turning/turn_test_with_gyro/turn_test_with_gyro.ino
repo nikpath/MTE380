@@ -1,19 +1,19 @@
-/*
- * Tests straight driving, starts and stops based on tof
+/* Get all possible data from MPU6050
+ * Accelerometer values are given as multiple of the gravity [1g = 9.81 m/s²]
+ * Gyro values are given in deg/s
+ * Angles are given in degrees
+ * Note that X and Y are tilt angles and not pitch/roll.
+ *
+ * License: MIT
  */
-
 #include "Arduino.h"
 #include "Wire.h"
 #include "Adafruit_VL53L0X.h"
-#include <L298NX2.h>
 #include <MPU6050_light.h>
+// Include the (new) library
+#include <L298NX2.h>
 
-//gyro initial
-MPU6050 mpu(Wire);
-float az;
-int num=0;
-
-//motor initial
+// Pin definition
 const unsigned int EN_A = 3; //left motor (relative to the front)
 const unsigned int IN1_A = 5;
 const unsigned int IN2_A = 6;
@@ -24,6 +24,9 @@ const unsigned int EN_B = 9;
 
 // Initialize both motors
 L298NX2 motors(EN_A, IN1_A, IN2_A, EN_B, IN1_B, IN2_B);
+
+MPU6050 mpu(Wire);
+float az;
 
 //tof initial
 // address we will assign if dual sensor is present
@@ -76,9 +79,9 @@ void setID() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Wire.begin();
-  // wait until serial port opens for native USB devices
+
   while (! Serial) { delay(1); }
   
   pinMode(SHT_LOX1, OUTPUT);
@@ -99,62 +102,40 @@ void setup() {
   Serial.print(F("MPU6050 status: "));
   Serial.println(status);
   while(status!=0){ } // stop everything if could not connect to MPU6050
-
 }
 
-void basic_run() { //this just drives forward until the distance to the wall is 5cm
-  s_front = 0;
+void loop() {
+  //calibration
+  Serial.println(F("Calculating offsets, do not move MPU6050"));
+  Serial.println(F("Motor stop for 1 second"));
   motors.stop();
   delay(1000);
-  if(measure_front.RangeStatus != 4) {     // if not out of range
-    s_front = measure_front.RangeMilliMeter;
-    
-    while(s_front > 50) {
-      //full speed ahead
-      motors.setSpeedA(255);
-      motors.setSpeedB(255);
-      motors.forward();
-      delay(100);
-  
-      Serial.print("Distance:");  
-      Serial.print(s_front);
-      Serial.print("mm");    
-    }  
-  } else {
-    Serial.print("Out of range");
+  mpu.calcOffsets(true,true); // gyro and accelero
+  Serial.println("Done!\n");
+  while (abs(az) <90){
+  mpu.update();
+  az=mpu.getAngleZ();
+  //motor turning code (method 1)
+  motors.setSpeedA(255);
+  motors.setSpeedB(90);
+  motors.forward();
+  delay(100);
+  /*or alternative turning method (method 2)
+   motors.setSpeedA(90);
+   motors.setSpeedB(90);
+   motors.forwardA();
+   motors.backwardB();
+   delay(100);
+   */
+  //these are for checking & can be deleted later
+    Serial.print("turning\n");
+    Serial.print(F("ANGLE     Z: "));
+    Serial.print(az);
+    Serial.print("\n");
+    delay(100);
   }
-
-}
-
-void test_run() { //this stops at multiple distances while driving to test that the sensor can detect those distances
-  s_front = 0;
-  int distance = 950; //initial distance it should stop at
-  
-  for(int i = 0; i <= 4; i++) {
-    //decrement distance
-    distance = 950 - i*300;
-    Serial.print("SHOULD STOP AT:");  
-    Serial.print(distance);
-  
-    s_front = measure_front.RangeMilliMeter;
-    
-    while(s_front > distance) {
-      //full speed ahead
-      motors.setSpeedA(255);
-      motors.setSpeedB(255);
-      motors.forward();
-      delay(100);
-  
-      Serial.print("Distance:");  
-      Serial.print(s_front);
-      Serial.print("mm");    
-    }
-    
-    motors.stop();
-    delay(1000);  
+  motors.stop();
+  delay (100);
+  az=0;
+  Serial.print("Turning done");
   }
-}
-void loop() {
-  basic_run();
-  Serial.println();
-}
