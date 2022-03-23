@@ -32,8 +32,8 @@ L298NX2 motors(EN_A, IN1_A, IN2_A, EN_B, IN1_B, IN2_B);
 int s_front,s_side;
 
 // set the pins to shutdown
-#define SHT_LOX1 8
-#define SHT_LOX2 9
+#define SHT_LOX1 12
+#define SHT_LOX2 13
 
 // objects for the vl53l0x
 Adafruit_VL53L0X lox1 = Adafruit_VL53L0X();
