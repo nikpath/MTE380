@@ -1,72 +1,67 @@
-/*!
- * This is the locating test code
- * 
- */
-#include "Arduino.h"
+// include libraries
+#include "Adafruit_VL53L0X.h"
 #include "Wire.h"
-#include "DFRobot_VL53L0X.h"
-#include <L298NX2.h>
+#include <MPU6050_light.h>
 
-DFRobot_VL53L0X s_front;
+//gyro initial
+MPU6050 mpu(Wire);
+float az;
+int num=0;
 
-//pin declaration
-//motor pins
+//tof initial
+#define LOX1_ADDRESS 0x30
+#define LOX2_ADDRESS 0x31
+int s_front,s_side;
 
-//button pin
-/*
-// Pin definition - motor 1 (right)
-const unsigned int IN1 = 2;
-const unsigned int IN2 = 3;
-const unsigned int EN_A = 9;
+// set the pins to shutdown
+#define SHT_LOX1 12
+#define SHT_LOX2 13
 
-//pin definition - motor 2 (left)
-const unsigned int IN1_B = 4;
-const unsigned int IN2_B = 5;
-const unsigned int EN_B = 10;
-*/
+// objects for the vl53l0x
+Adafruit_VL53L0X lox1 = Adafruit_VL53L0X();
+Adafruit_VL53L0X lox2 = Adafruit_VL53L0X();
 
-int cur_dist = 0;
+// this holds the measurement
+VL53L0X_RangingMeasurementData_t measure_front;
+VL53L0X_RangingMeasurementData_t measure_side;
 
-void setup() {
-  //Motor setup
-  //L298NX2 motors(EN_A, IN1_A, IN2_A, EN_B, IN1_B, IN2_B );
-  
-  // Wait for Serial Monitor to be opened
-  while (!Serial)
-  {
-    //do nothing
+void setID() { //set addresses for devices on i2c bus (tof and gyro)
+  // all reset
+  digitalWrite(SHT_LOX1, LOW);    
+  digitalWrite(SHT_LOX2, LOW);
+  delay(10);
+  // all unreset
+  digitalWrite(SHT_LOX1, HIGH);
+  digitalWrite(SHT_LOX2, HIGH);
+  delay(10);
+
+  // activating LOX1 and reseting LOX2
+  digitalWrite(SHT_LOX1, HIGH);
+  digitalWrite(SHT_LOX2, LOW);
+
+  // initing LOX1
+  if(!lox1.begin(LOX1_ADDRESS)) {
+    Serial.println(F("Failed to boot first VL53L0X"));
+    while(1);
   }
+  delay(10);
 
-  // Set initial speed
-  //motors.setSpeed(70);
-  
-  //TOF setup
-  //initialize serial communication at 115200 bits per second:
-  Serial.begin(115200);
-  //join i2c bus (address optional for master)
-  Wire.begin();
-  //Set I2C sub-device address
-  s_front.begin(0x50);
-  //Set to Back-to-back mode and high precision mode
-  s_front.setMode(s_front.eContinuous,s_front.eHigh);
-  //Laser rangefinder begins to work
-  s_front.start();
+  // activating LOX2
+  digitalWrite(SHT_LOX2, HIGH);
+  delay(10);
+
+  //initing LOX2
+  if(!lox2.begin(LOX2_ADDRESS)) {
+    Serial.println(F("Failed to boot second VL53L0X"));
+    while(1);
+  }
 }
 
 void loop() 
 {
-  //Get the distance
-  cur_dist = s_front.getDistance();
-  if(cur_dist < 70){
-    Serial.print("stop motors");
-    //motors.stop();
-  } else {
-    Serial.print("running motors");
-    //motors.forward();
-    delay(3000);
-  }
-  Serial.print("Distance: ");Serial.println(s_front.getDistance());
-  //The delay is added to demonstrate the effect, and if you do not add the delay,
-  //it will not affect the measurement accuracy
+  lox1.rangingTest(&measure_front, false); //need this for sensor reading to work!
+  s_front = measure_front.RangeMilliMeter;
+  Serial.print(s_front);
+  Serial.print("mm");    
   delay(500);
 }

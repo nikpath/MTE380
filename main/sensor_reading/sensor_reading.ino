@@ -145,7 +145,7 @@ void mpu_test() {
     delay(1000);
     mpu.calcOffsets(true,true); // gyro and accelero
     Serial.println("Done!\n");
-    while (abs(az) <90){
+    
     mpu.update();
     az=mpu.getAngleZ();
     /*
@@ -157,7 +157,6 @@ void mpu_test() {
       Serial.print(az);
       Serial.print("\n");
       delay(100);
-    }
     /*
      stop motor again
      */
@@ -166,6 +165,7 @@ void mpu_test() {
     num=num+1; //num is like a switch
   }
 }
+
 
 void setup() {
   Serial.begin(115200);
@@ -195,67 +195,27 @@ void setup() {
 }
 
 void loop() {
-  //i2c_scan();
-  //read_dual_sensors();
-  delay(1000);
-  //mpu_test();
-
-  if (num == 0){
-    //calibration
-    Serial.println(F("Calculating offsets, do not move MPU6050"));
-    Serial.println(F("Motor stop for 1 second"));
-    /*
-     stop motor
-     */
-    delay(1000);
-    mpu.calcOffsets(true,true); // gyro and accelero
-    Serial.println("Done!\n");
-    while (abs(az) <90){
-    mpu.update();
-    az=mpu.getAngleZ();
-    /*
-     mortor turning
-     */
-    //these are for checking & can be deleted later
-      Serial.print("turning\n");
-      Serial.print(F("ANGLE     Z: "));
-      Serial.print(az);
-      Serial.print("\n");
+  int abs_dist = 1000;
+  lox1.rangingTest(&measure_front, false); // pass in 'true' to get debug data printout!
+  //lox2.rangingTest(&measure_side, false); // pass in 'true' to get debug data printout!
+  for(int i = 0; i < 11; i++){
+    Serial.print("DISTANCE: ");
+    Serial.print(abs_dist - i*10);
+    Serial.println();
+    for(int j = 0; j < 10; j++){
+      // print sensor one reading
+      lox1.rangingTest(&measure_front, false);
+      s_front = measure_front.RangeMilliMeter;    
+      Serial.print(s_front);
+      Serial.print("mm");    
+      Serial.println();
       delay(100);
     }
-    /*
-     stop motor again
-     */
-    az=0;
-    Serial.print("Turning done");
-    num=num+1; //num is like a switch
-  }
-
-  lox1.rangingTest(&measure_front, false); // pass in 'true' to get debug data printout!
-  lox2.rangingTest(&measure_side, false); // pass in 'true' to get debug data printout!
-
-  // print sensor one reading
-  Serial.print("1: ");
-  if(measure_front.RangeStatus != 4) {     // if not out of range
-    s_front = measure_front.RangeMilliMeter;    
-    Serial.print(s_front);
-    Serial.print("mm");    
-  } else {
-    Serial.print("Out of range");
-  }
-  
-  Serial.print(" ");
-
-  // print sensor two reading
-  Serial.print("2: ");
-  if(measure_side.RangeStatus != 4) {
-    s_side = measure_side.RangeMilliMeter;
-    Serial.print(s_side);
-    Serial.print("mm");
-  } else {
-    Serial.print("Out of range");
+    Serial.println();
+    delay(5000);
   }
   
   Serial.println();
+  delay(10000);
 
 }

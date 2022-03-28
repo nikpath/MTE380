@@ -1,8 +1,7 @@
+
 /*
  * Tests straight driving, starts and stops based on tof
  */
-
-#include "Arduino.h"
 #include "Wire.h"
 #include "Adafruit_VL53L0X.h"
 #include <L298NX2.h>
@@ -75,6 +74,11 @@ void setID() {
   }
 }
 
+float calculate_offset(int distance) {
+  float offset = -0.00005*pow(distance, 2) + 0.0752*distance + 11.093;
+  return offset;
+}
+
 void setup() {
   Serial.begin(115200);
   Wire.begin();
@@ -98,63 +102,85 @@ void setup() {
   byte status = mpu.begin();
   Serial.print(F("MPU6050 status: "));
   Serial.println(status);
-  while(status!=0){ } // stop everything if could not connect to MPU6050
+  while(status!=0){Serial.print("gyro not working");   } // stop everything if could not connect to MPU6050
 
 }
 
 void basic_run() { //this just drives forward until the distance to the wall is 5cm
-  s_front = 0;
   motors.stop();
   delay(1000);
-  if(measure_front.RangeStatus != 4) {     // if not out of range
-    s_front = measure_front.RangeMilliMeter;
+
+  lox1.rangingTest(&measure_front, false); 
+  s_front = measure_front.RangeMilliMeter;
+    Serial.print("Distance:");  
+    Serial.print(s_front);
+    Serial.print("mm");    
     
-    while(s_front > 50) {
-      //full speed ahead
-      motors.setSpeedA(255);
-      motors.setSpeedB(255);
-      motors.forward();
-      delay(100);
-  
-      Serial.print("Distance:");  
-      Serial.print(s_front);
-      Serial.print("mm");    
-    }  
-  } else {
-    Serial.print("Out of range");
+  while(s_front > 50) {
+    lox1.rangingTest(&measure_front, false); //need this for sensor reading to work!
+    s_front = measure_front.RangeMilliMeter;
+    //full speed ahead
+    motors.setSpeedA(255);
+    motors.setSpeedB(255);
+    motors.backwardA();
+    motors.forwardB();
+    delay(100);
+
+    Serial.print("Distance:");  
+    Serial.print(s_front);
+    Serial.print("mm"); 
+    Serial.println();   
   }
+
+  Serial.println();
 
 }
 
 void test_run() { //this stops at multiple distances while driving to test that the sensor can detect those distances
-  s_front = 0;
   int distance = 950; //initial distance it should stop at
-  
+  int offset = 35;
+  int acc_distance = 950;
   for(int i = 0; i <= 4; i++) {
     //decrement distance
-    distance = 950 - i*300;
+    acc_distance = 950 - i*300;
+    if(acc_distance >= 700) {
+      offset = 80;
+     } else if(700 > acc_distance && acc_distance > 400 ) {
+      offset = 90;
+     } else if(400 > acc_distance && acc_distance > 200) {
+      offset = 85;
+     } else {
+      offset = 70;
+     }
+    distance = acc_distance + offset;
     Serial.print("SHOULD STOP AT:");  
     Serial.print(distance);
-  
+    Serial.println();
+    
+    lox1.rangingTest(&measure_front, false); 
     s_front = measure_front.RangeMilliMeter;
     
     while(s_front > distance) {
+      lox1.rangingTest(&measure_front, false); //need this for sensor reading to work!
+      s_front = measure_front.RangeMilliMeter;
       //full speed ahead
-      motors.setSpeedA(255);
-      motors.setSpeedB(255);
-      motors.forward();
+      motors.setSpeedA(95);
+      motors.setSpeedB(127);
+      motors.backward();
       delay(100);
   
       Serial.print("Distance:");  
       Serial.print(s_front);
-      Serial.print("mm");    
+      Serial.print("mm");
+      Serial.println();    
     }
     
     motors.stop();
-    delay(1000);  
+    delay(3000);  
+    Serial.println();
   }
+  delay(30000);
 }
 void loop() {
-  basic_run();
-  Serial.println();
+  test_run();
 }
