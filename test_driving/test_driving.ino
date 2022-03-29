@@ -75,8 +75,19 @@ void setID() {
 }
 
 float calculate_offset(int distance) {
-  float offset = -0.00005*pow(distance, 2) + 0.0752*distance + 11.093;
+  //y = -0.0001x2 + 0.1222x - 18.768
+  float offset = -0.0001*pow(distance, 2) + 0.1222*distance - 18.768;
   return offset;
+}
+
+float get_distance() {
+  float total = 0;
+  for(int i = 0; i < 3; i++){
+    lox1.rangingTest(&measure_front, false); //need this for sensor reading to work!
+    s_front = measure_front.RangeMilliMeter;
+    total += s_front;
+  }
+  return (total/3);
 }
 
 void setup() {
@@ -140,31 +151,30 @@ void test_run() { //this stops at multiple distances while driving to test that 
   int distance = 950; //initial distance it should stop at
   int offset = 35;
   int acc_distance = 950;
+  float cur_dist = 0;
   for(int i = 0; i <= 4; i++) {
     //decrement distance
     acc_distance = 950 - i*300;
-    if(acc_distance >= 700) {
-      offset = 80;
-     } else if(700 > acc_distance && acc_distance > 400 ) {
-      offset = 90;
-     } else if(400 > acc_distance && acc_distance > 200) {
-      offset = 85;
-     } else {
-      offset = 70;
-     }
+    offset = calculate_offset(acc_distance);
     distance = acc_distance + offset;
-    Serial.print("SHOULD STOP AT:");  
+    Serial.print("WANTED DISTANCE:");  
+    Serial.print(acc_distance);
+    Serial.println();
+    Serial.print("SHOULD READ:");  
     Serial.print(distance);
     Serial.println();
     
     lox1.rangingTest(&measure_front, false); 
     s_front = measure_front.RangeMilliMeter;
     
-    while(s_front > distance) {
-      lox1.rangingTest(&measure_front, false); //need this for sensor reading to work!
-      s_front = measure_front.RangeMilliMeter;
+    while(cur_dist > distance) {
+      cur_dist = get_distance();
+      Serial.print("current distance:");  
+      Serial.print(cur_dist);
+      Serial.println(); 
+         
       //full speed ahead
-      motors.setSpeedA(95);
+      motors.setSpeedA(127);
       motors.setSpeedB(127);
       motors.backward();
       delay(100);
@@ -182,5 +192,5 @@ void test_run() { //this stops at multiple distances while driving to test that 
   delay(30000);
 }
 void loop() {
-  test_run();
+  basic_run();
 }

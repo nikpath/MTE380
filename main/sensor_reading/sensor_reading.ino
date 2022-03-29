@@ -195,19 +195,21 @@ void setup() {
 }
 
 void loop() {
-  int abs_dist = 1000;
+  int abs_dist = 800;
   lox1.rangingTest(&measure_front, false); // pass in 'true' to get debug data printout!
   //lox2.rangingTest(&measure_side, false); // pass in 'true' to get debug data printout!
-  for(int i = 0; i < 11; i++){
+  for(int i = 0; i < 17; i++){
     Serial.print("DISTANCE: ");
-    Serial.print(abs_dist - i*10);
+    Serial.print(abs_dist - i*50);
     Serial.println();
-    for(int j = 0; j < 10; j++){
+    for(int j = 0; j < 20; j++){
       // print sensor one reading
       lox1.rangingTest(&measure_front, false);
-      s_front = measure_front.RangeMilliMeter;    
-      Serial.print(s_front);
-      Serial.print("mm");    
+      //lox2.rangingTest(&measure_side, false); // pass in 'true' to get debug data printout!
+      //s_side = measure_side.RangeMilliMeter; 
+      s_front = measure_front.RangeMilliMeter;       
+      //Serial.print(s_side);
+      Serial.print(s_front);   
       Serial.println();
       delay(100);
     }
