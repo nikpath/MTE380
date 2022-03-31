@@ -15,11 +15,11 @@
 
 ArduPID myController;
 
-double setpoint = 100;
+double setpoint = 130;
 double input;
 double output;
-double p = 5;
-double i = 0;
+double p = 100;
+double i = 100;
 double d = 0;
 
 //global variables
@@ -108,17 +108,18 @@ float get_frontdistance() {
   return (total/2);
 }
 
-double get_sidedistance() {
-  double total = 0;
+float get_sidedistance() {
+  float total = 0;
   for(int i = 0; i < 2; i++){
-    lox1.rangingTest(&measure_side, false); //need this for sensor reading to work!
-    double s_s = measure_side.RangeMilliMeter;
+    lox2.rangingTest(&measure_side, false); //need this for sensor reading to work!
+    float s_s = measure_side.RangeMilliMeter;
     total += s_s;
   }
   return (total/2);
 }
 
 void setID() { //set addresses for devices on i2c bus (tof and gyro)
+  Serial.println("doing set id");
   // all reset
   digitalWrite(SHT_LOX1, LOW);    
   digitalWrite(SHT_LOX2, LOW);
@@ -156,7 +157,7 @@ void turn_90() { //does a 90deg turn to the right
   motors.setSpeedA(255);
   motors.setSpeedB(255);
   motors.forward();
-  delay(500);
+  delay(460);
   motors.stop();
   delay (300);
 }
@@ -173,7 +174,7 @@ void drive_until(float wall_distance) { //drives until the distance to the wall 
   while(s_front > wall_distance) {
     //|| (abs(tilt_angle)>=10)
     //full speed ahead
-    motors.setSpeedA(250); 
+    motors.setSpeedA(255); 
     motors.setSpeedB(255); 
     motors.forwardA();
     motors.backwardB();
@@ -194,6 +195,7 @@ void drive_until(float wall_distance) { //drives until the distance to the wall 
       adjust(err);
     }
     //renew front distance 
+    delay(100);
     //lox1.rangingTest(&measure_front, false); //need this for sensor reading to work!
     //s_front = measure_front.RangeMilliMeter;
     s_front = get_frontdistance();
@@ -210,8 +212,8 @@ void setup() {
   while (! Serial) { delay(1); }
   
   myController.begin(&input, &output, &setpoint, p, i, d);
-  myController.setOutputLimits(120, 255);
-  myController.setBias(255.0 / 2.0);
+  myController.setOutputLimits(190, 255);
+  //myController.setBias(255.0 / 2.0);
   myController.setWindUpLimits(-10, 10); // Groth bounds for the integral term to prevent integral wind-up
   
   myController.start();
@@ -302,14 +304,54 @@ void basic_main() {
   delay(100000);
   //should be at center now
 }
+void i2c_scanner() { 
+  byte error, address;
+  int nDevices;
+ 
+  Serial.println("Scanning...");
+ 
+  nDevices = 0;
+  for(address = 1; address < 127; address++ )
+  {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+ 
+    if (error == 0)
+    {
+      Serial.print("I2C device found at address 0x");
+      if (address<16)
+        Serial.print("0");
+      Serial.print(address,HEX);
+      Serial.println("  !");
+ 
+      nDevices++;
+    }
+    else if (error==4)
+    {
+      Serial.print("Unknown error at address 0x");
+      if (address<16)
+        Serial.print("0");
+      Serial.println(address,HEX);
+    }    
+  }
+  if (nDevices == 0)
+    Serial.println("No I2C devices found\n");
+  else
+    Serial.println("done\n");
+ 
+  delay(5000);           // wait 5 seconds for next scan
+}
+
 void set_motors(double output) {
-  motors.setSpeedA(output - 5); 
+  motors.setSpeedA(output); 
   motors.setSpeedB(output); 
 
 }
 
 void drive_straight() {
-  Serial.println("in drive strsit");
   input = get_sidedistance(); // Replace with sensor feedback
 
   myController.compute();
@@ -327,7 +369,6 @@ void drive_straight() {
 
 void loop() {
   //only run the trip once 
-  Serial.println("in loop");
   lox1.rangingTest(&measure_front, false); //need this for sensor reading to work!
   s_front = measure_front.RangeMilliMeter;
   while(s_front > 50) {
@@ -339,6 +380,6 @@ void loop() {
     motors.backwardB();
     delay(100);
   }
-  Serial.println("stopping");
   motors.stop();
+  delay(500);
 }  
